@@ -40,7 +40,7 @@ def parse_cfg(cfgfile):
 
 
 def create_modules(blocks):
-    net_info[0] = blocks[0]  # Captures the information about the input and pre-processing
+    net_info = blocks[0]  # Captures the information about the input and pre-processing
     module_list = nn.ModuleList()
     prev_filters = 3  # initial RGB filters
     output_filters = []
@@ -120,3 +120,37 @@ def create_modules(blocks):
         elif x["type"] == "shortcut":
             shortcut = EmptyLayer()
             module.add_module("shortcut_{}".format(index), shortcut)
+
+        # Yolo is the detection layer
+        elif x["type"] == "yolo":
+            mask = x["mask"].split(",")
+            mask = [int(x) for x in mask]
+
+            anchors = x["anchors"].split(",")
+            anchors = [int(a) for a in anchors]
+            anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
+            anchors = [anchors[i] for i in mask]
+
+            detection = DetectionLayer(anchors)
+            module.add_module("Detection_{}".format(index), detection)
+
+        module_list.append(module)
+        prev_filters = filters
+        output_filters.append(filters)
+
+    return net_info, module_list
+
+
+class EmptyLayer(nn.Module):
+    def __init__(self):
+        super(EmptyLayer, self).__init__()
+
+
+class DetectionLayer(nn.Module):
+    def __init__(self, anchors):
+        super(DetectionLayer, self).__init__()
+        self.anchors = anchors
+
+
+blocks = parse_cfg("cfg/yolov3.cfg")
+print(create_modules(blocks))
