@@ -153,14 +153,24 @@ class DetectionLayer(nn.Module):
         self.anchors = anchors
 
 
-blocks = parse_cfg("cfg/yolov3.cfg")
-print(create_modules(blocks))
+# blocks = parse_cfg("cfg/yolov3.cfg")
+# print(create_modules(blocks))
+
+
+def get_test_input():
+    img = cv2.imread("dog-cycle-car.png")
+    img = cv2.resize(img, (416, 416))  # Resize to the input dimension
+    img_ = img[:, :, ::-1].transpose((2, 0, 1))  # BGR -> RGB | H X W C -> C X H X W
+    img_ = img_[np.newaxis, :, :, :] / 255.0  # Add a channel at 0 (for batch) | Normalise
+    img_ = torch.from_numpy(img_).float()  # Convert to float
+    img_ = Variable(img_)  # Convert to Variable
+    return img_
 
 
 class Darknet(nn.Module):
     def __init__(self, cfgfile):
         super(Darknet, self).__init__()
-        self.blocks = parse_cfg()
+        self.blocks = parse_cfg(cfgfile)
         self.net_info, self.module_list = create_modules(self.blocks)
 
     def forward(self, x, CUDA):
@@ -200,7 +210,7 @@ class Darknet(nn.Module):
             elif module_type == "yolo":
 
                 anchors = self.module_list[i][0].anchors
-                #Get the input dimensions
+                # Get the input dimensions
                 inp_dim = int(self.net_info["height"])
 
                 # Get the number of classes
@@ -221,4 +231,7 @@ class Darknet(nn.Module):
         return detections
 
 
-
+model = Darknet("cfg/yolov3.cfg")
+inp = get_test_input()
+pred = model(inp, torch.cuda.is_available())
+print(pred)
